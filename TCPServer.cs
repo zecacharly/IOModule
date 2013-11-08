@@ -140,7 +140,7 @@ namespace IOModule {
                 }
             } catch (Exception exp) {
 
-                log.Error(exp);
+                log.Error(this, exp);
             }
         }
 
@@ -234,7 +234,7 @@ namespace IOModule {
                         state.Close();
                     }
                 } else {
-                    log.Error(exp);
+                    log.Error(this,exp);
                 }
                 
             }
