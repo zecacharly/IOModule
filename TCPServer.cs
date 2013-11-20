@@ -271,7 +271,7 @@ namespace IOModule {
 
 
 
-        private KPPLogger log = new KPPLogger(typeof(TCPServer));
+        private static KPPLogger log = new KPPLogger(typeof(TCPServer));
 
 
          private String m_ID;
