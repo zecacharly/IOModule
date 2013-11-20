@@ -9,6 +9,7 @@ using System.Xml.Serialization;
 using System.Net;
 using System.Threading;
 using System.Runtime.Serialization;
+using System.ComponentModel;
 
 namespace IOModule {
 
@@ -324,7 +325,7 @@ namespace IOModule {
         /// for handling your application errors.
         /// <span class="code-SummaryComment"></summary></span>
         public event ApplicationExceptionDlgt HandleApplicationException;
-        [XmlIgnore]
+        [XmlIgnore, Browsable(false)]
         protected IPEndPoint endPoint;
         [XmlIgnore]
         internal Socket listener;
@@ -334,6 +335,8 @@ namespace IOModule {
         /// <span class="code-SummaryComment"><summary></span>
         /// Gets/sets pendingConnectionQueueSize. The default is 100.
         /// <span class="code-SummaryComment"></summary></span>
+        /// 
+        [XmlIgnore, Browsable(false)]
         public int PendingConnectionQueueSize {
             get { return pendingConnectionQueueSize; }
             set {
@@ -347,7 +350,7 @@ namespace IOModule {
 
 
         ConnectionState m_Client;
-        [XmlIgnore]
+        [XmlIgnore, Browsable(false)]
         public ConnectionState Client {
             get { return m_Client; }
             
@@ -372,7 +375,7 @@ namespace IOModule {
         /// Gets/sets endPoint
         /// <span class="code-SummaryComment"></summary></span>
         /// 
-        [XmlIgnore]
+        [XmlIgnore,Browsable(false)]
         public IPEndPoint EndPoint {
             get { return endPoint; }
             private set {
