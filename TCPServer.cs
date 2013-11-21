@@ -311,9 +311,11 @@ namespace IOModule {
         /// allows you to attach not only your application's event handler, but
         /// also other handlers, such as diagnostics/monitoring, to the event.
         /// <span class="code-SummaryComment"></summary></span>
+        
         public event TcpServerEventDlgt Connected;
+        
         public event TcpServerEventDlgt Disconnected;
-
+        
         public event TcpServerClientMessageEvent ServerClientMessage;
 
         /// <span class="code-SummaryComment"><summary></span>
@@ -324,6 +326,7 @@ namespace IOModule {
         /// tool to aid development rather than a suggested approach 
         /// for handling your application errors.
         /// <span class="code-SummaryComment"></summary></span>
+        
         public event ApplicationExceptionDlgt HandleApplicationException;
         [XmlIgnore, Browsable(false)]
         protected IPEndPoint endPoint;
