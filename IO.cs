@@ -14,6 +14,9 @@ using System.Drawing;
 using System.ComponentModel;
 using Phidgets;
 using Phidgets.Events;
+using System.Windows.Forms;
+using System.Windows.Forms.Design;
+using System.Drawing.Design;
 
 namespace IOModule {
 
@@ -1438,67 +1441,192 @@ namespace IOModule {
     #region PHidget
 
 
+
+
+
+    #region Phidgets selector
+
+    public class PhidgetsSelector : System.Drawing.Design.UITypeEditor {
+        // this is a container for strings, which can be 
+        // picked-out
+        ListBox Box1 = new ListBox();
+        IWindowsFormsEditorService edSvc;
+        // this is a string array for drop-down list
+        //internal static List<CameraInfo> RemoteCameras = new List<CameraInfo>();
+
+
+
+        public PhidgetsSelector() {
+            Box1.BorderStyle = BorderStyle.None;
+            // add event handler for drop-down box when item 
+            // will be selected
+            Box1.Click += new EventHandler(Box1_Click);
+        }
+
+        public override UITypeEditorEditStyle GetEditStyle(ITypeDescriptorContext context) {
+            return UITypeEditorEditStyle.DropDown;
+        }
+
+        // Displays the UI for value selection.
+        public override object EditValue(System.ComponentModel.ITypeDescriptorContext context, System.IServiceProvider provider, object value) {
+            Box1.Items.Clear();
+
+
+            foreach (InterfaceKit  item in PhidgetsIO.BoardsAvaible) {
+                Box1.Items.Add(item.SerialNumber);
+            }
+
+            
+
+            Box1.Height = Box1.PreferredHeight;
+
+           
+
+
+
+            // window.
+            edSvc =
+               (IWindowsFormsEditorService)provider.
+               GetService(typeof
+               (IWindowsFormsEditorService));
+
+            if (edSvc != null) {
+
+
+
+                edSvc.DropDownControl(Box1);
+                if (Box1.SelectedItem == null) {
+                    return value;
+                } else {
+                    return Box1.SelectedItem;
+                }
+
+            }
+            return value;
+        }
+
+
+
+        private void Box1_Click(object sender, EventArgs e) {
+
+            edSvc.CloseDropDown();
+        }
+    }
+
+    #endregion
+    
     public sealed class PhidgetsIO  {
+
+        public static List<InterfaceKit> BoardsAvaible = new List<InterfaceKit>();
+        
+        private static InterfaceKit m_ifkit = new InterfaceKit();
         private static KPPLogger log = new KPPLogger(typeof(PhidgetsIO));
 
-        private static Int32 SerialNumber { get; set; }
-        private static Int32 IoInMinCount { get; set; }
-        private static Int32 IoInMaxCount { get; set; }
-        private static Int32 IoOutMinCount { get; set; }
-        private static Int32 IoOutMaxCount { get; set; }
+        private Int32 _SerialNumber = -1;
+        [DisplayName("Serial Number"), XmlAttribute, EditorAttribute(typeof(PhidgetsSelector), typeof(UITypeEditor))]
+        public Int32 SerialNumber {
+            get { return _SerialNumber; }
+            set {
+                if (_SerialNumber!=value) {
+                    _SerialNumber = value;
+                    IfKit = PhidgetsIO.BoardsAvaible.Find(phi => phi.SerialNumber == value);
+                     
+                }
+            }
+        }
 
-        static private InterfaceKit _ifKit = null;
-        private static AttachEventHandler _ev_attach = null;
-        private static DetachEventHandler _ev_dettach = null;
-        private static InputChangeEventHandler _ev_inputChanged = null;
-        private static OutputChangeEventHandler _ev_outputChanged = null;
-        private static Phidgets.Events.ErrorEventHandler _ev_error = null;
-        private static Boolean IsConnected = false;
-        private static Boolean IsInitialized = false;
+        private  Int32 IoInMinCount { get; set; }
+
+        private  Int32 IoInMaxCount { get; set; }
+        private  Int32 IoOutMinCount { get; set; }
+        private  Int32 IoOutMaxCount { get; set; }
+
+        private InterfaceKit _IfKit = null;
+        [XmlIgnore,Browsable(false)]
+        public InterfaceKit IfKit {
+            get { return _IfKit; }
+            set { 
+                _IfKit = value;
+                if (IfKit!=null) {
+                    this.Connect();
+                }
+            }
+        }
+
+        private  AttachEventHandler _ev_attach = null;
+        private  DetachEventHandler _ev_dettach = null;
+        private  InputChangeEventHandler _ev_inputChanged = null;
+        private  OutputChangeEventHandler _ev_outputChanged = null;
+        private  Phidgets.Events.ErrorEventHandler _ev_error = null;
+        private  Boolean IsConnected = false;
+        private  Boolean IsInitialized = false;
+
 
         private String _Name;
-        
+        [XmlAttribute,ReadOnly(true)]
         public String Name {
             get { return _Name; }
             set { _Name = value; }
         }
 
+        [XmlAttribute,DisplayName("Pre Inspection Output")]
+        public int PreInspectionOutput { get; set; }
+
+        public static void InitializePhidgets() {
+            m_ifkit.Attach += new AttachEventHandler(m_ifkit_Attach);
+            m_ifkit.open();
+            //m_ifkit.Detach += new DetachEventHandler(ifKit_Detach);
+            //m_ifkit.Error += new ErrorEventHandler(ifKit_Error);
+
+        }
+
+        static void m_ifkit_Attach(object sender, AttachEventArgs e) {
+            InterfaceKit ifKit = (InterfaceKit)sender;
+            if (!BoardsAvaible.Contains(ifKit)) {
+                BoardsAvaible.Add(ifKit);
+            }
+        }
+
         public PhidgetsIO() {
-            SerialNumber = -1;
             
+            SerialNumber = -1;
+            PreInspectionOutput = -1;
+        }
+
+        public override string ToString() {
+            return "Phidgets IO";
         }
 
         /// <summary>
         /// Connects this instance.
         /// </summary>
         /// <returns></returns>
-        public static bool Connect() {
-            if (!IsConnected) {                
-                if (_ifKit == null) {
-                    try {
-                        _ifKit = new InterfaceKit();
-                        _ifKit.Attach += _ev_attach = new AttachEventHandler(_ifKit_Attach);
-                        //_ifKit.Detach += _ev_dettach = new DetachEventHandler(_ifKit_Detach);
-                        //_ifKit.Error += _ev_error = new Phidgets.Events.ErrorEventHandler(_ifKit_Error);
-                        //_ifKit.InputChange += _ev_inputChanged = new InputChangeEventHandler(_ifKit_InputChange);
-                        //_ifKit.OutputChange += _ev_outputChanged = new OutputChangeEventHandler(_ifKit_OutputChange);
+        public bool Connect() {
+            if (!IsConnected) {
+                try {
+                    Name = IfKit.Name;
+                    IfKit.Attach += _ev_attach = new AttachEventHandler(_ifKit_Attach);
+                    IfKit.Detach += _ev_dettach = new DetachEventHandler(_ifKit_Detach);
+                    //_ifKit.Error += _ev_error = new Phidgets.Events.ErrorEventHandler(_ifKit_Error);
+                    //_ifKit.InputChange += _ev_inputChanged = new InputChangeEventHandler(_ifKit_InputChange);
+                    //_ifKit.OutputChange += _ev_outputChanged = new OutputChangeEventHandler(_ifKit_OutputChange);
 
-                        //if (SerialNumber > -1) {
-                        //    _ifKit.open(SerialNumber);
-                        //} else {
-                            _ifKit.open();
-                        //}
-                        IsInitialized = false;
-                        IsConnected = true;
-                        //RaiseOnIoModuleConnected();
-                    } catch (Exception exp) {
-                        log.Error("Unable to connect to Phidget interface", exp);
-                        if (_ifKit != null) {
-                            _ifKit.close();
-                        }
-                        _ifKit = null;
+                    //if (SerialNumber > -1) {
+                    //    _ifKit.open(SerialNumber);
+                    //} else {
+                    IfKit.open(SerialNumber);
+                    //}
+                    IsInitialized = false;
+                    IsConnected = true;
+                    //RaiseOnIoModuleConnected();
+                } catch (Exception exp) {
+                    log.Error("Unable to connect to Phidget interface", exp);
+                    if (IfKit != null) {
+                        IfKit.close();
                     }
+                    IfKit = null;
                 }
+
                 return IsConnected;
             }
             return false;
@@ -1508,22 +1636,22 @@ namespace IOModule {
         /// Disconnects this instance.
         /// </summary>
         /// <returns></returns>
-        public static bool Disconnect() {
+        public bool Disconnect() {
             if (IsConnected) {
                 
-                if (_ifKit != null) {
+                if (IfKit != null) {
                     try {
-                        _ifKit.close();
+                       // IfKit.close();
 
-                        _ifKit.Attach -= _ev_attach;
+                        IfKit.Attach -= _ev_attach;
                         _ev_attach = null;
-                        _ifKit.Detach -= _ev_dettach;
+                        IfKit.Detach -= _ev_dettach;
                         _ev_dettach = null;
-                        _ifKit.Error -= _ev_error;
+                        IfKit.Error -= _ev_error;
                         _ev_error = null;
-                        _ifKit.InputChange -= _ev_inputChanged;
+                        IfKit.InputChange -= _ev_inputChanged;
                         _ev_inputChanged = null;
-                        _ifKit.OutputChange -= _ev_outputChanged;
+                        IfKit.OutputChange -= _ev_outputChanged;
                         _ev_outputChanged = null;
 
                         IsConnected = false;
@@ -1531,7 +1659,7 @@ namespace IOModule {
                     } catch (Exception exp) {
                         log.Error("Error disconnecting from Phidget interface", exp);
                     }
-                    _ifKit = null;
+                    IfKit = null;
                     return !IsConnected;
                 }
             }
@@ -1552,7 +1680,7 @@ namespace IOModule {
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="Phidgets.Events.AttachEventArgs"/> instance containing the event data.</param>
-        private static void _ifKit_Attach(object sender, AttachEventArgs e) {
+        private void _ifKit_Attach(object sender, AttachEventArgs e) {
             InterfaceKit ifKit = sender as InterfaceKit;
             if (ifKit != null) {
                 IsInitialized = true;
@@ -1598,16 +1726,16 @@ namespace IOModule {
            
         }
 
-        public static Boolean SendCommand(string comm, params string[] args) {
-            if (_ifKit==null) {
-                PhidgetsIO.Connect();
+        public Boolean SendCommand(string comm, params string[] args) {
+            if (IfKit==null) {
+                this.Connect();
             }
-            if (_ifKit != null) {
+            if (IfKit != null) {
                 if (comm == "SET_OUT" && args.Length > 1) {
                     int idx = -1;
                     if (int.TryParse(args[0], out idx)) {
-                        if (idx > -1 && idx < _ifKit.outputs.Count) {
-                            _ifKit.outputs[idx] = args[1] == "ON" || args[1] == "1";
+                        if (idx > -1 && idx < IfKit.outputs.Count) {
+                            IfKit.outputs[idx] = args[1] == "ON" || args[1] == "1";
                         }
                         return true;
                     }
@@ -1615,6 +1743,10 @@ namespace IOModule {
             }
             return false;
         }
+
+
+
+        
     }
 
 
