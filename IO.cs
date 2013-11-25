@@ -1518,7 +1518,20 @@ namespace IOModule {
     public sealed class PhidgetsIO  {
 
         public static List<InterfaceKit> BoardsAvaible = new List<InterfaceKit>();
-        
+
+        public delegate void BordAvaible(int boardSerial);
+        private static event BordAvaible _OnBordAvaible;
+        public static event BordAvaible OnBordAvaible {
+            add {
+                if (_OnBordAvaible == null || !_OnBordAvaible.GetInvocationList().Contains(value)) {
+                    _OnBordAvaible += value;
+                }
+            }
+            remove {
+                _OnBordAvaible -= value;
+            }
+        }
+
         private static InterfaceKit m_ifkit = new InterfaceKit();
         private static KPPLogger log = new KPPLogger(typeof(PhidgetsIO));
 
@@ -1543,7 +1556,7 @@ namespace IOModule {
 
         private InterfaceKit _IfKit = null;
         [XmlIgnore,Browsable(false)]
-        public InterfaceKit IfKit {
+        private InterfaceKit IfKit {
             get { return _IfKit; }
             set { 
                 _IfKit = value;
@@ -1575,6 +1588,7 @@ namespace IOModule {
         public static void InitializePhidgets() {
             m_ifkit.Attach += new AttachEventHandler(m_ifkit_Attach);
             m_ifkit.open();
+            
             //m_ifkit.Detach += new DetachEventHandler(ifKit_Detach);
             //m_ifkit.Error += new ErrorEventHandler(ifKit_Error);
 
@@ -1584,6 +1598,9 @@ namespace IOModule {
             InterfaceKit ifKit = (InterfaceKit)sender;
             if (!BoardsAvaible.Contains(ifKit)) {
                 BoardsAvaible.Add(ifKit);
+                if (_OnBordAvaible != null) {
+                    _OnBordAvaible(ifKit.SerialNumber);
+                }
             }
         }
 
@@ -1591,6 +1608,12 @@ namespace IOModule {
             
             SerialNumber = -1;
             PreInspectionOutput = -1;
+            PhidgetsIO.OnBordAvaible += new BordAvaible(PhidgetsIO_OnBordAvaible);
+        }
+
+        void PhidgetsIO_OnBordAvaible(int boardSerial) {
+            IfKit = PhidgetsIO.BoardsAvaible.Find(board => board.SerialNumber == boardSerial);
+
         }
 
         public override string ToString() {
